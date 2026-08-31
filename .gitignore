@@ -5,3 +5,4 @@ kubeconfig
 *secret*.yaml
 *.pem
 *.key
+*credentials*.json
