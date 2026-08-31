@@ -6,3 +6,6 @@ kubeconfig
 *.pem
 *.key
 *credentials*.json
+app-secret.yaml
+postgres-secret.yaml
+*-secret.yaml
