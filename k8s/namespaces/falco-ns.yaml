@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  creationTimestamp: "2026-08-07T21:46:22Z"
+  labels:
+    kubernetes.io/metadata.name: falco
+  name: falco
+  resourceVersion: "280780"
+  uid: 6c566190-0ebf-4bc1-9ef1-6a1cc40188a5
+spec:
+  finalizers:
+  - kubernetes
+status:
+  phase: Active

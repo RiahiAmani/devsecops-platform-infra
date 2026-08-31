@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  creationTimestamp: "2026-07-20T10:36:02Z"
+  labels:
+    kubernetes.io/metadata.name: cloudflared
+  name: cloudflared
+  resourceVersion: "2648"
+  uid: 9a10ebed-3dc9-419f-8892-757fe3100731
+spec:
+  finalizers:
+  - kubernetes
+status:
+  phase: Active

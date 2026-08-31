@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  creationTimestamp: "2026-07-20T10:10:00Z"
+  labels:
+    kubernetes.io/metadata.name: devsecops
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+  name: devsecops
+  resourceVersion: "643"
+  uid: 16e1b354-9a4b-498e-876d-e62b645b325c
+spec:
+  finalizers:
+  - kubernetes
+status:
+  phase: Active

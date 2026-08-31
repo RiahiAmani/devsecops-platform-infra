@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  creationTimestamp: "2026-07-20T10:15:53Z"
+  labels:
+    kubernetes.io/metadata.name: jenkins
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/enforce-version: latest
+  name: jenkins
+  resourceVersion: "1033"
+  uid: a57e9928-cfe0-4ad3-9aa7-2439ff61eba4
+spec:
+  finalizers:
+  - kubernetes
+status:
+  phase: Active

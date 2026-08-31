@@ -1,0 +1,85 @@
+apiVersion: v1
+items:
+- apiVersion: autoscaling.k8s.io/v1
+  kind: VerticalPodAutoscaler
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"autoscaling.k8s.io/v1","kind":"VerticalPodAutoscaler","metadata":{"annotations":{},"name":"taskmanager-app-vpa","namespace":"devsecops"},"spec":{"targetRef":{"apiVersion":"apps/v1","kind":"Deployment","name":"taskmanager-app"},"updatePolicy":{"updateMode":"Off"}}}
+    creationTimestamp: "2026-08-07T19:29:15Z"
+    generation: 1
+    name: taskmanager-app-vpa
+    namespace: devsecops
+    resourceVersion: "648929"
+    uid: a0a6ab15-1d64-4250-b0de-e71347f37a1f
+  spec:
+    targetRef:
+      apiVersion: apps/v1
+      kind: Deployment
+      name: taskmanager-app
+    updatePolicy:
+      updateMode: "Off"
+  status:
+    conditions:
+    - lastTransitionTime: "2026-08-07T19:29:20Z"
+      status: "True"
+      type: RecommendationProvided
+    observedGeneration: 1
+    recommendation:
+      containerRecommendations:
+      - containerName: taskmanager-app
+        lowerBound:
+          cpu: 25m
+          memory: 250Mi
+        target:
+          cpu: 25m
+          memory: 250Mi
+        uncappedTarget:
+          cpu: 25m
+          memory: 250Mi
+        upperBound:
+          cpu: 473m
+          memory: 250Mi
+- apiVersion: autoscaling.k8s.io/v1
+  kind: VerticalPodAutoscaler
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"autoscaling.k8s.io/v1","kind":"VerticalPodAutoscaler","metadata":{"annotations":{},"name":"taskmanager-postgres-vpa","namespace":"devsecops"},"spec":{"targetRef":{"apiVersion":"apps/v1","kind":"Deployment","name":"taskmanager-postgres"},"updatePolicy":{"updateMode":"Off"}}}
+    creationTimestamp: "2026-08-04T10:32:06Z"
+    generation: 1
+    name: taskmanager-postgres-vpa
+    namespace: devsecops
+    resourceVersion: "648662"
+    uid: 589ae5f2-a7e0-4765-92d4-c631058423e9
+  spec:
+    targetRef:
+      apiVersion: apps/v1
+      kind: Deployment
+      name: taskmanager-postgres
+    updatePolicy:
+      updateMode: "Off"
+  status:
+    conditions:
+    - lastTransitionTime: "2026-08-04T10:32:55Z"
+      status: "True"
+      type: RecommendationProvided
+    observedGeneration: 1
+    recommendation:
+      containerRecommendations:
+      - containerName: postgres
+        lowerBound:
+          cpu: 25m
+          memory: 250Mi
+        target:
+          cpu: 25m
+          memory: 250Mi
+        uncappedTarget:
+          cpu: 25m
+          memory: 250Mi
+        upperBound:
+          cpu: 25m
+          memory: 250Mi
+kind: List
+metadata:
+  resourceVersion: ""

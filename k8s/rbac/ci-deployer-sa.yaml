@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  creationTimestamp: "2026-07-20T10:10:07Z"
+  name: ci-deployer
+  namespace: devsecops
+  resourceVersion: "568"
+  uid: 5fa1c92d-5e95-41b0-8b59-c1dee0c617cf

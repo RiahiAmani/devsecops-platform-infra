@@ -1,0 +1,54 @@
+apiVersion: v1
+items:
+- apiVersion: rbac.authorization.k8s.io/v1
+  kind: Role
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"rbac.authorization.k8s.io/v1","kind":"Role","metadata":{"annotations":{},"name":"deployer-role","namespace":"devsecops"},"rules":[{"apiGroups":["apps"],"resources":["deployments"],"verbs":["get","list","watch","create","update","delete","patch"]},{"apiGroups":[""],"resources":["pods","services"],"verbs":["get","list","watch","create","update","delete"]},{"apiGroups":["networking.k8s.io"],"resources":["ingresses"],"verbs":["get","list","watch","create","update","patch","delete"]}]}
+    creationTimestamp: "2026-07-20T10:10:26Z"
+    name: deployer-role
+    namespace: devsecops
+    resourceVersion: "469130"
+    uid: d8592a79-f89e-40c5-83b6-c668db887783
+  rules:
+  - apiGroups:
+    - apps
+    resources:
+    - deployments
+    verbs:
+    - get
+    - list
+    - watch
+    - create
+    - update
+    - delete
+    - patch
+  - apiGroups:
+    - ""
+    resources:
+    - pods
+    - services
+    verbs:
+    - get
+    - list
+    - watch
+    - create
+    - update
+    - delete
+    - patch
+  - apiGroups:
+    - networking.k8s.io
+    resources:
+    - ingresses
+    verbs:
+    - get
+    - list
+    - watch
+    - create
+    - update
+    - patch
+    - delete
+kind: List
+metadata:
+  resourceVersion: ""
