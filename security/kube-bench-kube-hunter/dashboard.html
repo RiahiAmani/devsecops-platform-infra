@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Dashboard d'audit de sécurité — Cluster Kubernetes</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap');
+  :root {
+    --bg:#0F1626; --panel:#17223A; --panel-2:#1D2B47; --border:#2A3B57;
+    --text:#E7EEF7; --muted:#8FA3C0; --cyan:#38BDF8;
+    --green:#34D399; --amber:#FBBF24; --red:#F87171;
+    --mono:'IBM Plex Mono',monospace; --sans:'Inter',sans-serif;
+  }
+  * {box-sizing:border-box;}
+  body {
+    margin:0;
+    background:
+      radial-gradient(1200px 500px at 15% -10%, rgba(56,189,248,0.10), transparent 60%),
+      radial-gradient(900px 500px at 100% 0%, rgba(52,211,153,0.06), transparent 55%),
+      var(--bg);
+    color:var(--text); font-family:var(--sans); padding:36px 28px 60px;
+  }
+  .wrap {max-width:1180px;margin:0 auto;}
+  header {margin-bottom:28px;}
+  .eyebrow {font-size:12px;letter-spacing:.12em;color:var(--cyan);text-transform:uppercase;margin:0 0 10px;}
+  h1 {font-size:28px;font-weight:600;margin:0 0 6px;letter-spacing:-0.01em;}
+  .meta {color:var(--muted);font-size:14px;margin:0;}
+  .scanline {height:2px;margin-top:22px;border-radius:2px;
+    background:linear-gradient(90deg, var(--cyan) 0%, rgba(56,189,248,0) 35%, rgba(52,211,153,0.6) 70%, rgba(52,211,153,0) 100%);
+    background-size:200% 100%; animation:sweep 3.5s linear infinite;}
+  @keyframes sweep {0% {background-position:0% 0;} 100% {background-position:-200% 0;}}
+  .stats {display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:18px 0 26px;}
+  .stat {background:var(--panel-2);border:1px solid var(--border);border-radius:10px;padding:16px 16px 14px;}
+  .stat .label {font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;}
+  .stat .value {font-size:30px;font-weight:600;line-height:1;}
+  .stat.pass .value {color:var(--green);} .stat.fail .value {color:var(--red);} .stat.warn .value {color:var(--amber);}
+  section {background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:26px 28px 30px;margin-bottom:24px;}
+  section h2 {font-size:18px;margin:0 0 4px;display:flex;align-items:center;gap:10px;}
+  section h3 {font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:15px 0 10px;}
+  section .sub {color:var(--muted);font-size:13.5px;margin:0 0 18px;}
+  .tag {font-size:11px;letter-spacing:.06em;padding:2px 8px;border-radius:5px;text-transform:uppercase;
+    background:rgba(56,189,248,0.12);color:var(--cyan);border:1px solid rgba(56,189,248,0.35);}
+  .grid-2 {display:grid;grid-template-columns:1fr 1.3fr;gap:26px;}
+  @media (max-width:880px) { .grid-2 {grid-template-columns:1fr;} .stats {grid-template-columns:repeat(2,1fr);} }
+  table {width:100%;border-collapse:collapse;font-size:13px;}
+  th {text-align:left;font-size:10.5px;letter-spacing:.05em;color:var(--muted);text-transform:uppercase;padding:8px 10px;border-bottom:1px solid var(--border);}
+  td {padding:9px 10px;border-bottom:1px solid rgba(255,255,255,0.05);vertical-align:top;}
+  .code {font-family:var(--mono);font-size:12px;color:var(--cyan);}
+  .muted {color:var(--muted);}
+  .remediation-block {font-family:var(--mono); font-size:11px; color:#A7F3D0; background: rgba(16, 185, 129, 0.05); border-radius: 4px; padding: 4px;}
+  .pill {font-size:10.5px;font-weight:600;padding:3px 9px;border-radius:20px;display:inline-block;white-space:nowrap;}
+  .pill.warn {background:rgba(251,191,36,0.15);color:var(--amber);border:1px solid rgba(251,191,36,0.4);}
+  .pill.risk {background:rgba(248,113,113,0.12);color:var(--red);border:1px solid rgba(248,113,113,0.35);}
+  .banner {border-radius:10px;padding:14px 16px;margin-top:6px;background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.3);}
+  .banner.ok {background:rgba(52,211,153,0.08);border-color:rgba(52,211,153,0.3);}
+  .banner b {font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;}
+  .banner.ok b {color:var(--green);}
+  .banner p {margin:6px 0 0;font-size:13px;color:var(--text);line-height:1.5;}
+  footer {color:var(--muted);font-size:12px;text-align:center;margin-top:30px;}
+
+  /* Scrollbar sombre cohérente avec le thème (tableau des non-conformités) */
+  .scroll-panel::-webkit-scrollbar { width: 8px; height: 8px; }
+  .scroll-panel::-webkit-scrollbar-track { background: var(--panel-2); border-radius: 6px; }
+  .scroll-panel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 6px; }
+  .scroll-panel::-webkit-scrollbar-thumb:hover { background: var(--cyan); }
+  .scroll-panel { scrollbar-width: thin; scrollbar-color: var(--border) var(--panel-2); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Cluster Kubernetes · devsecops-lab</h1>
+    <p class="meta">Généré le 20/07/2026 à 12:48</p>
+    <div class="scanline"></div>
+  </header>
+  
+  <section>
+    <h2>kube-bench <span class="tag tool">CIS Kubernetes Benchmark</span></h2>
+    <p class="sub">124 contrôles évalués au total.</p>
+    <div class="stats">
+      <div class="stat pass"><div class="label">Conformes</div><div class="value">66</div></div>
+      <div class="stat fail"><div class="label">Non conformes</div><div class="value">7</div></div>
+      <div class="stat warn"><div class="label">Avertissements</div><div class="value">51</div></div>
+      <div class="stat"><div class="label">Informatifs</div><div class="value" style="color:var(--muted)">0</div></div>
+    </div>
+    
+        <h3>Contrôles non conformes ou à vérifier (58)</h3>
+        <div class="scroll-panel" style="max-height: 400px; overflow-y: auto; border: 1px solid var(--border); border-radius: 6px;">
+            <table>
+              <thead><tr><th>ID</th><th>Statut</th><th>Contrôle</th><th>Remédiation / Commandes</th></tr></thead>
+              <tbody>
+            <tr>
+              <td class="code">1.1.9</td>
+              <td><span class="pill warn">WARN</span></td>
+              <td>Ensure that the Container Network Interface file permissions are set to 600 or more restrictive (Manual)</td>
+              <td class="remediation-block">Run the below command (based on the file location on your system) on the control plane node.<br>For example, chmod 600 &lt;path/to/cni/files&gt;</td>
+            </tr>
+            <tr>
+              <td class="code">1.1.10</td>
+              <td><span class="pill warn">WARN</span></td>
+              <td>Ensure that the Container Network Interface file ownership is set to root:root (Manual)</td>
+              <td class="remediation-block">Run the below command (based on the file location on your system) on the control plane node.<br>For example,<br>chown root:root &lt;path/to/cni/files&gt;</td>
+            </tr>
+            <tr>
+              <td class="code">1.1.12</td>
+              <td><span class="pill risk">FAIL</span></td>
+              <td>Ensure that the etcd data directory ownership is set to etcd:etcd (Automated)</td>
+              <td class="remediation-block">On the etcd server node, get the etcd data directory, passed as an argument --data-dir,<br>from the command &#x27;ps -ef | grep etcd&#x27;.<br>Run the below command (based on the etcd data directory found above).<br>For example, chown etcd:etcd /var/lib/etcd</td>
+            </tr>
+            <tr>
+              <td class="code">1.1.20</td>
+              <td><span class="pill warn">WARN</span></td>
+              <td>Ensure that the Kubernetes PKI certificate file permissions are set to 600 or more restrictive (Manual)</td>
+              <td class="remediation-block">Run the below command (based on the file location on your system) on the control plane node.<br>For example,<br>chmod -R 600 /etc/kubernetes/pki/*.crt</td>
+            </tr>
+            <tr>
+              <td class="code">1.2.1</td>
+              <td><span class="pill warn">WARN</span></td>
+              <td>Ensure that the --anonymous-auth argument is set to false (Manual)</td>
+              <td class="remediation-block">Edit the API server pod specification file /etc/kubernetes/manifests/kube-apiserver.yaml<br>on the control plane node and set the below parameter.<br>--anonymous-auth=false</td>
+            </tr>
+            <tr>
+              <td class="code">1.2.5</td>
+              <td><span class="pill risk">FAIL</span></td>
+              <td>Ensure that the --kubelet-certificate-authority argument is set as appropriate (Automated)</td>
+              <td class="remediation-block">Follow the Kubernetes documentation and setup the TLS connection between<br>the apiserver and kubelets. Then, edit the API server pod specification file<br>/etc/kubernetes/manifests/kube-apiserver.yaml on the control plane node and set the<br>--kubelet-certificate-authority parameter to the path to the cert file for the certificate authority.<br>--kubelet-certificate-authority=&lt;ca-string&gt;</td>
+            </tr>
+            <tr>
+              <td class="code">1.2.9</td>
+              <td><span class="pill warn">WARN</span></td>
+              <td>Ensure that the admission control plugin EventRateLimit is set (Manual)</td>
+              <td class="remediation-block">Follow the Kubernetes documentation and set the desired limits in a configuration file.<br>Then, edit the API server pod specification file /etc/kubernetes/manifests/kube-apiserver.yaml<br>and set the below parameters.<br>--enable-admission-plugins=...,EventRateLimit,...<br>--admission-control-config-file=&lt;path/to/configuration/file&gt;</td>
+            </tr>
+            <tr>
+              <td class="code">1.2.11</td>
+              <td><span class="pill warn">WARN</span></td>
+              <td>Ensure that the admission control plugin AlwaysPullImages is set (Manual)</td>
+              <td class="remediation-block">Edit the API server pod specification file /etc/kubernetes/manifests/kube-apiserver.yaml<br>on the control plane node and set the --enable-admission-plugins parameter to include<br>AlwaysPullImages.<br>--enable-admission-plugins=...,AlwaysPullImages,...</td>
+            </tr>
+            <tr>
+              <td class="code">1.2.12</td>
+              <td><span class="pill warn">WARN</span></td>
+              <td>Ensure that the admission control plugin SecurityContextDeny is set if PodSecurityPolicy is not used (Manual)</td>
+              <td class="remediation-block">Edit the API server pod specification file /etc/kubernetes/manifests/kube-apiserver.yaml<br>on the control plane node and set the --enable-admission-plugins parameter to include<br>SecurityContextDeny, unless PodSecurityPolicy is already in place.<br>--enable-admission-plugins=...,SecurityContextDeny,...</td>
+            </tr>
+            <tr>
+              <td class="code">1.2.18</td>
+              <td><span class="pill risk">FAIL</span></td>
+              <td>Ensure that the --audit-log-path argument is set (Automated)</td>
+              <td class="remediation-block">Edit the API server pod specification file /etc/kubernetes/manifests/kube-apiserver.yaml<br>on the control plane node and set the --audit-log-path parameter to a suitable path and<br>file where you would like audit logs to be written, for example,<br>--audit-log-path=/var/log/apiserver/audit.log</td>
+            </tr>
+            <tr>
+              <td class="code">1.2.19</td>
+              <td><span class="pill risk">FAIL</span></td>
+              <td>Ensure that the --audit-log-maxage argument is set to 30 or as appropriate (Automated)</td>
+              <td class="remediation-block">Edit the API server pod specification file /etc/kubernetes/manifests/kube-apiserver.yaml<br>on the control plane node and set the --audit-log-maxage parameter to 30<br>or as an appropriate number of days, for example,<br>--audit-log-maxage=30</td>
+            </tr>
+            <tr>
+              <td class="code">1.2.20</td>
+              <td><span class="pill risk">FAIL</span></td>
+              <td>Ensure that the --audit-log-maxbackup argument is set to 10 or as appropriate (Automated)</td>
+              <td class="remediation-block">Edit the API server pod specification file /etc/kubernetes/manifests/kube-apiserver.yaml<br>on the control plane node and set the --audit-log-maxbackup parameter to 10 or to an appropriate<br>value. For example,<br>--audit-log-maxbackup=10</td>
+            </tr>
+            <tr>
+              <td class="code">1.2.21</td>
+              <td><span class="pill risk">FAIL</span></td>
+              <td>Ensure that the --audit-log-maxsize argument is set to 100 or as appropriate (Automated)</td>
+              <td class="remediation-block">Edit the API server pod specification file /etc/kubernetes/manifests/kube-apiserver.yaml<br>on the control plane node and set the --audit-log-maxsize parameter to an appropriate size in MB.<br>For example, to set it as 100 MB, --audit-log-maxsize=100</td>
+            </tr>
+            <tr>
+              <td class="code">1.2.22</td>
+              <td><span class="pill warn">WARN</span></td>
+              <td>Ensure that the --request-timeout argument is set as appropriate (Manual)</td>
+              <td class="remediation-block">Edit the API server pod specification file /etc/kubernetes/manifests/kube-apiserver.yaml<br>and set the below parameter as appropriate and if needed.<br>For example, --request-timeout=300s</td>
+            </tr>
+            <tr>
+              <td class="code">1.2.29</td>
+              <td><span class="pill warn">WARN</span></td>
+              <td>Ensure that the --encryption-provider-config argument is set as appropriate (Manual)</td>
+              <td class="remediation-block">Follow the Kubernetes documentation and configure a EncryptionConfig file.<br>Then, edit the API server pod specification file /etc/kubernetes/manifests/kube-apiserver.yaml<br>on the control plane node and set the --encryption-provider-config parameter to the path of that file.<br>For example, --encryption-provider-config=&lt;/path/to/EncryptionConfig/File&gt;</td>
+            </tr>
+            <tr>
+              <td class="code">1.2.30</td>
+              <td><span class="pill warn">WARN</span></td>
+              <td>Ensure that encryption providers are appropriately configured (Manual)</td>
+              <td class="remediation-block">Follow the Kubernetes documentation and configure a EncryptionConfig file.<br>In this file, choose aescbc, kms or secretbox as the encryption provider.</td>
+            </tr>
+            <tr>
+              <td class="code">1.2.31</td>
+              <td><span class="pill warn">WARN</span></td>
+              <td>Ensure that the API Server only makes use of Strong Cryptographic Ciphers (Manual)</td>
+              <td class="remediation-block">Edit the API server pod specification file /etc/kubernetes/manifests/kube-apiserver.yaml<br>on the control plane node and set the below parameter.<br>--tls-cipher-suites=TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1305_SHA256,<br>TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA,TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,<br>TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA,TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,<br>TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256,<br>TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA,TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,<br>TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,<br>TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,TLS_RSA_WITH_3DES_EDE_CBC_SHA,TLS_RSA_WITH_AES_128_CBC_SHA,<br>TLS_RSA_WITH_AES_128_GCM_SHA256,TLS_RSA_WITH_AES_256_CBC_SHA,TLS_RSA_WITH_AES_256_GCM_SHA384</td>
+            </tr>
+            <tr>
+              <td class="code">1.3.1</td>
+              <td><span class="pill warn">WARN</span></td>
+              <td>Ensure that the --terminated-pod-gc-threshold argument is set as appropriate (Manual)</td>
+              <td class="remediation-block">Edit the Controller Manager pod specification file /etc/kubernetes/manifests/kube-controller-manager.yaml<br>on the control plane node and set the --terminated-pod-gc-threshold to an appropriate threshold,<br>for example, --terminated-pod-gc-threshold=10</td>
+            </tr>
+            <tr>
+              <td class="code">3.1.1</td>
+              <td><span class="pill warn">WARN</span></td>
+              <td>Client certificate authentication should not be used for users (Manual)</td>
+              <td class="remediation-block">Alternative mechanisms provided by Kubernetes such as the use of OIDC should be<br>implemented in place of client certificates.</td>
+            </tr>
+            <tr>
+              <td class="code">3.2.1</td>
+              <td><span class="pill warn">WARN</span></td>
+              <td>Ensure that a minimal audit policy is created (Manual)</td>
+              <td class="remediation-block">Create an audit policy file for your cluster.</td>
+            </tr>
+            <tr>
+              <td class="code">3.2.2</td>
+              <td><span class="pill warn">WARN</span></td>
+              <td>Ensure that the audit policy covers key security concerns (Manual)</td>
+              <td class="remediation-block">Review the audit policy provided for the cluster and ensure that it covers<br>at least the following areas,<br>- Access to Secrets managed by the cluster. Care should be taken to only<br>log Metadata for requests to Secrets, ConfigMaps, and TokenReviews, in<br>order to avoid risk of logging sensitive data.<br>- Modification of Pod and Deployment objects.<br>- Use of `pods/exec`, `pods/portforward`, `pods/proxy` and `services/proxy`.<br>For most requests, minimally logging at the Metadata level is recommended<br>(the most basic level of logging).</td>
+            </tr>
+            <tr>
+              <td class="code">4.1.3</td>
+              <td><span class="pill warn">WARN</span></td>
+              <td>If proxy kubeconfig file exists ensure permissions are set to 600 or more restrictive (Manual)</td>
+              <td class="remediation-block">Run the below command (based on the file location on your system) on the each worker node.<br>For example,<br>chmod 600 /etc/kubernetes/proxy.conf</td>
+            </tr>
+            <tr>
+              <td class="code">4.1.4</td>
+              <td><span class="pill warn">WARN</span></td>
+              <td>If proxy kubeconfig file exists ensure ownership is set to root:root (Manual)</td>
+              <td class="remediation-block">Run the below command (based on the file location on your system) on the each worker node.<br>For example, chown root:root /etc/kubernetes/proxy.conf</td>
+            </tr>
+            <tr>
+              <td class="code">4.1.7</td>
+              <td><span class="pill warn">WARN</span></td>
+              <td>Ensure that the certificate authorities file permissions are set to 600 or more restrictive (Manual)</td>
+              <td class="remediation-block">Run the following command to modify the file permissions of the<br>--client-ca-file chmod 600 &lt;filename&gt;</td>
+            </tr>
+            <tr>
+              <td class="code">4.1.9</td>
+              <td><span class="pill warn">WARN</span></td>
+              <td>If the kubelet config.yaml configuration file is being used validate permissions set to 600 or more restrictive (Manual)</td>
+              <td class="remediation-block">Run the following command (using the config file location identified in the Audit step)<br>chmod 600 /var/lib/kubelet/config.yaml</td>
+            </tr>
+            <tr>
+              <td class="code">4.2.6</td>
+              <td><span class="pill risk">FAIL</span></td>
+              <td>Ensure that the --protect-kernel-defaults argument is set to true (Automated)</td>
+              <td class="remediation-block">If using a Kubelet config file, edit the file to set `protectKernelDefaults` to `true`.<br>If using command line arguments, edit the kubelet service file<br>/etc/systemd/system/kubelet.service.d/10-kubeadm.conf on each worker node and<br>set the below parameter in KUBELET_SYSTEM_PODS_ARGS variable.<br>--protect-kernel-defaults=true<br>Based on your system, restart the kubelet service. For example:<br>systemctl daemon-reload<br>systemctl restart kubelet.service</td>
+            </tr>
+            <tr>
+              <td class="code">4.2.10</td>
+              <td><span class="pill warn">WARN</span></td>
+              <td>Ensure that the --tls-cert-file and --tls-private-key-file arguments are set as appropriate (Manual)</td>
+              <td class="remediation-block">If using a Kubelet config file, edit the file to set `tlsCertFile` to the location<br>of the certificate file to use to identify this Kubelet, and `tlsPrivateKeyFile`<br>to the location of the corresponding private key file.<br>If using command line arguments, edit the kubelet service file<br>/etc/systemd/system/kubelet.service.d/10-kubeadm.conf on each worker node and<br>set the below parameters in KUBELET_CERTIFICATE_ARGS variable.<br>--tls-cert-file=&lt;path/to/tls-certificate-file&gt;<br>--tls-private-key-file=&lt;path/to/tls-key-file&gt;<br>Based on your system, restart the kubelet service. For example,<br>systemctl daemon-reload<br>systemctl restart kubelet.service</td>
+            </tr>
+            <tr>
+              <td class="code">4.2.13</td>
+              <td><span class="pill warn">WARN</span></td>
+              <td>Ensure that the Kubelet only makes use of Strong Cryptographic Ciphers (Manual)</td>
+              <td class="remediation-block">If using a Kubelet config file, edit the file to set `tlsCipherSuites` to<br>TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_RSA_WITH_AES_256_GCM_SHA384,TLS_RSA_WITH_AES_128_GCM_SHA256<br>or to a subset of these values.<br>If using executable arguments, edit the kubelet service file<br>/etc/systemd/system/kubelet.service.d/10-kubeadm.conf on each worker node and<br>set the --tls-cipher-suites parameter as follows, or to a subset of these values.<br>--tls-cipher-suites=TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_RSA_WITH_AES_256_GCM_SHA384,TLS_RSA_WITH_AES_128_GCM_SHA256<br>Based on your system, restart the kubelet service. For example:<br>systemctl daemon-reload<br>systemctl restart kubelet.service</td>
+            </tr>
+            <tr>
+              <td class="code">5.1.1</td>
+              <td><span class="pill warn">WARN</span></td>
+              <td>Ensure that the cluster-admin role is only used where required (Manual)</td>
+              <td class="remediation-block">Identify all clusterrolebindings to the cluster-admin role. Check if they are used and<br>if they need this role or if they could use a role with fewer privileges.<br>Where possible, first bind users to a lower privileged role and then remove the<br>clusterrolebinding to the cluster-admin role :<br>kubectl delete clusterrolebinding [name]</td>
+            </tr>
+            <tr>
+              <td class="code">5.1.2</td>
+              <td><span class="pill warn">WARN</span></td>
+              <td>Minimize access to secrets (Manual)</td>
+              <td class="remediation-block">Where possible, remove get, list and watch access to Secret objects in the cluster.</td>
+            </tr>
+            <tr>
+              <td class="code">5.1.3</td>
+              <td><span class="pill warn">WARN</span></td>
+              <td>Minimize wildcard use in Roles and ClusterRoles (Manual)</td>
+              <td class="remediation-block">Where possible replace any use of wildcards in clusterroles and roles with specific<br>objects or actions.</td>
+            </tr>
+            <tr>
+              <td class="code">5.1.4</td>
+              <td><span class="pill warn">WARN</span></td>
+              <td>Minimize access to create pods (Manual)</td>
+              <td class="remediation-block">Where possible, remove create access to pod objects in the cluster.</td>
+            </tr>
+            <tr>
+              <td class="code">5.1.5</td>
+              <td><span class="pill warn">WARN</span></td>
+              <td>Ensure that default service accounts are not actively used. (Manual)</td>
+              <td class="remediation-block">Create explicit service accounts wherever a Kubernetes workload requires specific access<br>to the Kubernetes API server.<br>Modify the configuration of each default service account to include this value<br>automountServiceAccountToken: false</td>
+            </tr>
+            <tr>
+              <td class="code">5.1.6</td>
+              <td><span class="pill warn">WARN</span></td>
+              <td>Ensure that Service Account Tokens are only mounted where necessary (Manual)</td>
+              <td class="remediation-block">Modify the definition of pods and service accounts which do not need to mount service<br>account tokens to disable it.</td>
+            </tr>
+            <tr>
+              <td class="code">5.1.7</td>
+              <td><span class="pill warn">WARN</span></td>
+              <td>Avoid use of system:masters group (Manual)</td>
+              <td class="remediation-block">Remove the system:masters group from all users in the cluster.</td>
+            </tr>
+            <tr>
+              <td class="code">5.1.8</td>
+              <td><span class="pill warn">WARN</span></td>
+              <td>Limit use of the Bind, Impersonate and Escalate permissions in the Kubernetes cluster (Manual)</td>
+              <td class="remediation-block">Where possible, remove the impersonate, bind and escalate rights from subjects.</td>
+            </tr>
+            <tr>
+              <td class="code">5.2.1</td>
+              <td><span class="pill warn">WARN</span></td>
+              <td>Ensure that the cluster has at least one active policy control mechanism in place (Manual)</td>
+              <td class="remediation-block">Ensure that either Pod Security Admission or an external policy control system is in place<br>for every namespace which contains user workloads.</td>
+            </tr>
+            <tr>
+              <td class="code">5.2.2</td>
+              <td><span class="pill warn">WARN</span></td>
+              <td>Minimize the admission of privileged containers (Manual)</td>
+              <td class="remediation-block">Add policies to each namespace in the cluster which has user workloads to restrict the<br>admission of privileged containers.</td>
+            </tr>
+            <tr>
+              <td class="code">5.2.3</td>
+              <td><span class="pill warn">WARN</span></td>
+              <td>Minimize the admission of containers wishing to share the host process ID namespace (Automated)</td>
+              <td class="remediation-block">Add policies to each namespace in the cluster which has user workloads to restrict the<br>admission of `hostPID` containers.</td>
+            </tr>
+            <tr>
+              <td class="code">5.2.4</td>
+              <td><span class="pill warn">WARN</span></td>
+              <td>Minimize the admission of containers wishing to share the host IPC namespace (Automated)</td>
+              <td class="remediation-block">Add policies to each namespace in the cluster which has user workloads to restrict the<br>admission of `hostIPC` containers.</td>
+            </tr>
+            <tr>
+              <td class="code">5.2.5</td>
+              <td><span class="pill warn">WARN</span></td>
+              <td>Minimize the admission of containers wishing to share the host network namespace (Automated)</td>
+              <td class="remediation-block">Add policies to each namespace in the cluster which has user workloads to restrict the<br>admission of `hostNetwork` containers.</td>
+            </tr>
+            <tr>
+              <td class="code">5.2.6</td>
+              <td><span class="pill warn">WARN</span></td>
+              <td>Minimize the admission of containers with allowPrivilegeEscalation (Automated)</td>
+              <td class="remediation-block">Add policies to each namespace in the cluster which has user workloads to restrict the<br>admission of containers with `.spec.allowPrivilegeEscalation` set to `true`.</td>
+            </tr>
+            <tr>
+              <td class="code">5.2.7</td>
+              <td><span class="pill warn">WARN</span></td>
+              <td>Minimize the admission of root containers (Automated)</td>
+              <td class="remediation-block">Create a policy for each namespace in the cluster, ensuring that either `MustRunAsNonRoot`<br>or `MustRunAs` with the range of UIDs not including 0, is set.</td>
+            </tr>
+            <tr>
+              <td class="code">5.2.8</td>
+              <td><span class="pill warn">WARN</span></td>
+              <td>Minimize the admission of containers with the NET_RAW capability (Automated)</td>
+              <td class="remediation-block">Add policies to each namespace in the cluster which has user workloads to restrict the<br>admission of containers with the `NET_RAW` capability.</td>
+            </tr>
+            <tr>
+              <td class="code">5.2.9</td>
+              <td><span class="pill warn">WARN</span></td>
+              <td>Minimize the admission of containers with added capabilities (Automated)</td>
+              <td class="remediation-block">Ensure that `allowedCapabilities` is not present in policies for the cluster unless<br>it is set to an empty array.</td>
+            </tr>
+            <tr>
+              <td class="code">5.2.10</td>
+              <td><span class="pill warn">WARN</span></td>
+              <td>Minimize the admission of containers with capabilities assigned (Manual)</td>
+              <td class="remediation-block">Review the use of capabilites in applications running on your cluster. Where a namespace<br>contains applicaions which do not require any Linux capabities to operate consider adding<br>a PSP which forbids the admission of containers which do not drop all capabilities.</td>
+            </tr>
+            <tr>
+              <td class="code">5.2.11</td>
+              <td><span class="pill warn">WARN</span></td>
+              <td>Minimize the admission of Windows HostProcess containers (Manual)</td>
+              <td class="remediation-block">Add policies to each namespace in the cluster which has user workloads to restrict the<br>admission of containers that have `.securityContext.windowsOptions.hostProcess` set to `true`.</td>
+            </tr>
+            <tr>
+              <td class="code">5.2.12</td>
+              <td><span class="pill warn">WARN</span></td>
+              <td>Minimize the admission of HostPath volumes (Manual)</td>
+              <td class="remediation-block">Add policies to each namespace in the cluster which has user workloads to restrict the<br>admission of containers with `hostPath` volumes.</td>
+            </tr>
+            <tr>
+              <td class="code">5.2.13</td>
+              <td><span class="pill warn">WARN</span></td>
+              <td>Minimize the admission of containers which use HostPorts (Manual)</td>
+              <td class="remediation-block">Add policies to each namespace in the cluster which has user workloads to restrict the<br>admission of containers which use `hostPort` sections.</td>
+            </tr>
+            <tr>
+              <td class="code">5.3.1</td>
+              <td><span class="pill warn">WARN</span></td>
+              <td>Ensure that the CNI in use supports NetworkPolicies (Manual)</td>
+              <td class="remediation-block">If the CNI plugin in use does not support network policies, consideration should be given to<br>making use of a different plugin, or finding an alternate mechanism for restricting traffic<br>in the Kubernetes cluster.</td>
+            </tr>
+            <tr>
+              <td class="code">5.3.2</td>
+              <td><span class="pill warn">WARN</span></td>
+              <td>Ensure that all Namespaces have NetworkPolicies defined (Manual)</td>
+              <td class="remediation-block">Follow the documentation and create NetworkPolicy objects as you need them.</td>
+            </tr>
+            <tr>
+              <td class="code">5.4.1</td>
+              <td><span class="pill warn">WARN</span></td>
+              <td>Prefer using Secrets as files over Secrets as environment variables (Manual)</td>
+              <td class="remediation-block">If possible, rewrite application code to read Secrets from mounted secret files, rather than<br>from environment variables.</td>
+            </tr>
+            <tr>
+              <td class="code">5.4.2</td>
+              <td><span class="pill warn">WARN</span></td>
+              <td>Consider external secret storage (Manual)</td>
+              <td class="remediation-block">Refer to the Secrets management options offered by your cloud provider or a third-party<br>secrets management solution.</td>
+            </tr>
+            <tr>
+              <td class="code">5.5.1</td>
+              <td><span class="pill warn">WARN</span></td>
+              <td>Configure Image Provenance using ImagePolicyWebhook admission controller (Manual)</td>
+              <td class="remediation-block">Follow the Kubernetes documentation and setup image provenance.</td>
+            </tr>
+            <tr>
+              <td class="code">5.7.1</td>
+              <td><span class="pill warn">WARN</span></td>
+              <td>Create administrative boundaries between resources using namespaces (Manual)</td>
+              <td class="remediation-block">Follow the documentation and create namespaces for objects in your deployment as you need<br>them.</td>
+            </tr>
+            <tr>
+              <td class="code">5.7.2</td>
+              <td><span class="pill warn">WARN</span></td>
+              <td>Ensure that the seccomp profile is set to docker/default in your Pod definitions (Manual)</td>
+              <td class="remediation-block">Use `securityContext` to enable the docker/default seccomp profile in your pod definitions.<br>An example is as below:<br>securityContext:<br>seccompProfile:<br>type: RuntimeDefault</td>
+            </tr>
+            <tr>
+              <td class="code">5.7.3</td>
+              <td><span class="pill warn">WARN</span></td>
+              <td>Apply SecurityContext to your Pods and Containers (Manual)</td>
+              <td class="remediation-block">Follow the Kubernetes documentation and apply SecurityContexts to your Pods. For a<br>suggested list of SecurityContexts, you may refer to the CIS Security Benchmark for Docker<br>Containers.</td>
+            </tr>
+            <tr>
+              <td class="code">5.7.4</td>
+              <td><span class="pill warn">WARN</span></td>
+              <td>The default namespace should not be used (Manual)</td>
+              <td class="remediation-block">Ensure that namespaces are created to allow for appropriate segregation of Kubernetes<br>resources and that all new resources are created in a specific namespace.</td>
+            </tr></tbody>
+            </table>
+        </div>
+  </section>
+
+  
+  <section>
+    <h2>kube-hunter <span class="tag tool">Test d'intrusion</span></h2>
+    <p class="sub">3 service(s) détecté(s) — 1 vulnérabilité(s) trouvée(s).</p>
+    <div class="grid-2">
+      <div>
+        <h3>Services exposés (3)</h3>
+        <table>
+          <thead><tr><th>Service</th><th>Adresse</th><th>Description</th></tr></thead>
+          <tbody><tr>
+            <td><strong>Etcd</strong></td>
+            <td class="code">172.18.0.2:2379</td>
+            <td>Etcd est la base de données qui stocke l&#x27;état du cluster ; elle contient la configuration et peut contenir des secrets.</td>
+        </tr><tr>
+            <td><strong>Kubelet API</strong></td>
+            <td class="code">172.18.0.2:10250</td>
+            <td>Le Kubelet est le composant principal de chaque nœud : toutes les opérations sur les pods transitent par lui.</td>
+        </tr><tr>
+            <td><strong>API Server</strong></td>
+            <td class="code">172.18.0.2:6443</td>
+            <td>L&#x27;API Server est en charge de l&#x27;ensemble des opérations effectuées sur le cluster.</td>
+        </tr></tbody>
+        </table>
+      </div>
+      <div>
+        <h3>Vulnérabilités Détectées</h3>
+        
+        <table>
+          <thead><tr><th>Vulnérabilité</th><th>Emplacement</th><th>Gravité</th><th>Détail</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><b>KHV002</b> — K8s Version Disclosure</td>
+              <td>172.18.0.2:6443</td>
+              <td><span class="pill risk">Élevée</span></td>
+              <td>The kubernetes version could be obtained from the /version endpoint <br><span class="code" style="color:var(--green)">Evidence: v1.30.0</span></td>
+            </tr></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <footer>Fichier produit dynamiquement à partir des API JSON de kube-bench et kube-hunter</footer>
+</div>
+</body>
+</html>

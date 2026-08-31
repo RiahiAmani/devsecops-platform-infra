@@ -1,0 +1,11 @@
+customRules:
+  custom-exceptions.yaml: |-
+    - macro: kubelet_mount_operations
+      condition: >
+        (proc.name in (mount, umount, mount.nfs, umount.nfs)
+         and proc.pname in (kubelet, containerd, containerd-shim, systemd, runc))
+
+    - rule: Drop and execute new binary in container
+      condition: and not kubelet_mount_operations
+      override:
+        condition: append
