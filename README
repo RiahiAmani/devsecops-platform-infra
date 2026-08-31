@@ -1,0 +1,17 @@
+# DevSecOps Platform — Infrastructure as Code
+
+Configuration complète du cluster Kubernetes, du pipeline CI/CD sécurisé
+et de la supervision, réalisée dans le cadre du stage d'été 2025-2026.
+
+## Composants
+- Cluster : Kind, RBAC moindre privilège, Pod Security (restricted/baseline/privileged)
+- CI/CD : Jenkins + agents éphémères, Gitleaks, Checkov, SonarCloud, Trivy
+- Observabilité : Prometheus, Loki, Grafana, Falco
+- Exposition : NGINX Ingress + Cloudflare Tunnel
+
+## Dépôts liés
+- Dashboard unifié : https://github.com/RiahiAmani/devsecops-dashboard.git
+- Application de test (TaskManager) : https://github.com/RiahiAmani/flask-postgres-docker-compose.git
+
+## Rapport complet
+Voir `docs/` ou https://fr.overleaf.com/read/rhdvqnvhjpkj#cba1d4
