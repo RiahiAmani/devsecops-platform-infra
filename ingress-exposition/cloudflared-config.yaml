@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cloudflared-config
+  namespace: cloudflared
+data:
+  config.yaml: |
+    tunnel: d39a2d2e-ec0d-42a3-bd80-5c587bb46e50
+    credentials-file: /etc/cloudflared/creds/credentials.json
+    protocol: http2
+    ingress:
+      - hostname: jenkins.riahi.dpdns.org
+        service: http://ingress-nginx-controller.ingress-nginx.svc.cluster.local:80
+      - hostname: grafana.riahi.dpdns.org
+        service: http://ingress-nginx-controller.ingress-nginx.svc.cluster.local:80
+      - hostname: taskmanager.riahi.dpdns.org
+        service: http://ingress-nginx-controller.ingress-nginx.svc.cluster.local:80
+      - hostname: dashboard.riahi.dpdns.org
+        service: http://ingress-nginx-controller.ingress-nginx.svc.cluster.local:80
+      - service: http_status:404
