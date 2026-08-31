@@ -1,0 +1,20 @@
+grafana:
+  persistence:
+    enabled: true
+    size: 1Gi
+    storageClassName: standard
+  smtp:
+    existingSecret: grafana-smtp-secret
+    userKey: user
+    passwordKey: password
+  grafana.ini:
+    smtp:
+      enabled: true
+      host: smtp.gmail.com:587
+      skip_verify: false
+      from_address: <your-email>@example.com
+      from_name: Grafana DevSecOps
+    server:
+      domain: grafana.riahi.dpdns.org
+      root_url: "https://grafana.riahi.dpdns.org/"
+      serve_from_sub_path: false

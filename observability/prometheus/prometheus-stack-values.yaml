@@ -1,0 +1,6 @@
+grafana:
+  service:
+    type: ClusterIP
+prometheus:
+  service:
+    type: ClusterIP
