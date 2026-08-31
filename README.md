@@ -146,3 +146,5 @@ Jamais versionnés ici — à recréer manuellement lors d'une reprise :
 | Token SonarCloud | Gestionnaire d'identifiants Jenkins | Généré depuis SonarCloud |
 | Token Docker Hub | Gestionnaire d'identifiants Jenkins | Depuis Docker Hub → Security |
 | `kubeconfig` | local, jamais commité | Généré automatiquement par `kind create cluster` |
+| `app-secret` (TaskManager) | namespace `devsecops` | `kubectl create secret generic app-secret --from-literal=SECRET_KEY=...` |
+| `postgres-secret` | namespace `devsecops` | `kubectl create secret generic postgres-secret --from-literal=POSTGRES_PASSWORD=...` |
