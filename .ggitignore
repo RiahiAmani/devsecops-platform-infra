@@ -1,0 +1,13 @@
+*credentials*.json
+*.kubeconfig
+kubeconfig
+.env
+*secret*.yaml
+*.pem
+*.key*credentials*.json
+*.kubeconfig
+kubeconfig
+.env
+*secret*.yaml
+*.pem
+*.key
